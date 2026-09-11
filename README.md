@@ -1,56 +1,105 @@
-## What does TenderFit EU do?
+# TenderFit EU
 
-**TenderFit EU finds and ranks public procurement notices for a company profile**, using the public [TED](https://ted.europa.eu/) Search API v3. It retrieves up to 100 recent keyword/country/date matches, computes an explainable deterministic fit score, and writes them to an Apify dataset in descending score order. Apify provides scheduling, API access, monitoring and integrations for these results.
+Stop manually reviewing TED notices. TenderFit EU finds recent EU public tenders and ranks them against your company profile so you can focus on the opportunities most worth reviewing.
 
-The Actor uses Python, Apify SDK and HTTPX only. It requires no TED credentials, browser, LLM, database or proxy configuration.
+## What TenderFit EU does
 
-## Why use TenderFit EU?
+Turn recent tender notices into a ranked shortlist for your team to review. TenderFit EU:
 
-Use it to prioritize manual opportunity review. V2 distinguishes service phrases in market titles/descriptions from TED full-text keyword matches. For example, “cybersecurity” can match an organisation's name in a furniture tender without earning service points. The score measures documented relevance, not qualification, bidding feasibility or probability of winning.
+- Searches official [TED public procurement data](https://ted.europa.eu/).
+- Filters notices by keywords, buyer country and publication period.
+- Compares tenders with your optional company profile.
+- Calculates an explainable fit score from 0 to 100.
+- Gives reasons for each match.
+- Flags missing information, short deadlines and other points to check.
+- Sorts the retrieved results from highest to lowest fit score.
 
-## Who is this for?
+## What you get
 
-TenderFit EU is useful for:
+- Explainable 0-100 fit score
+- Strong / medium / weak ranking
+- Matched services
+- Matched keywords
+- Matched CPV codes
+- Buyer country
+- Estimated contract value
+- Tender deadline
+- Match reasons
+- Warnings
+- Direct TED source link
 
-- SMEs looking for relevant EU public contracts
-- consulting and IT companies monitoring procurement opportunities
-- business development teams
-- procurement consultants
-- developers and AI agents that need structured TED tender data
+Source values are included when TED provides them. Missing data stays `null`.
 
-Instead of manually reviewing large numbers of TED notices, TenderFit EU retrieves recent candidates, ranks them against your company profile, and explains why each opportunity may or may not be relevant.
+## Example result
 
-## How to use TenderFit EU
-
-1. Enter the JSON below in the Apify Input tab.
-2. Run the Actor and inspect the Output dataset and run logs.
+The JSON below is a simplified illustrative example, not a real TED notice or a complete scoring calculation.
 
 ```json
 {
-  "keywords": ["cybersecurity", "penetration testing"],
-  "country": "FRA",
-  "days": 30,
-  "max_results": 20
+  "notice_id": "EXAMPLE-2026",
+  "title": {
+    "eng": "Cybersecurity penetration testing services"
+  },
+  "buyer": {
+    "eng": ["Example Public Authority"]
+  },
+  "country": ["FRA"],
+  "estimated_value": "180000",
+  "currency": "EUR",
+  "days_until_deadline": 21,
+  "fit_score": 87,
+  "fit_level": "strong",
+  "matched_services": [
+    "penetration testing",
+    "incident response"
+  ],
+  "matched_keywords": [
+    "cybersecurity"
+  ],
+  "match_reasons": [
+    "Matched service in market title/description: penetration testing",
+    "Buyer country matches company profile: FRA",
+    "Estimated value is within the preferred range"
+  ],
+  "warnings": [],
+  "ted_url": "https://ted.europa.eu/..."
 }
 ```
 
-## Input
+This is an illustrative example. TenderFit never invents missing TED data.
 
-| Field | Default | Validation and meaning |
-| --- | --- | --- |
-| keywords | cybersecurity, penetration testing | 1–20 non-empty strings, maximum 200 characters each; trimmed and deduplicated case-insensitively. Quotes, backslashes, wildcards and control characters are rejected. |
-| country | FRA | Three-letter TED country code; trimmed and uppercased. Empty string or null disables filtering. Format is checked, not membership in TED's country vocabulary. Use FRA, not FR. |
-| days | 30 | Integer 1–3650. Inclusive lower bound: UTC today minus this many days. |
-| max_results | 20 | Integer 1–100. Candidate cap: retrieve newest publication dates first, then sort these candidates by fit score. |
-| company_profile | {} | Optional object; all seven nested fields optional, including null values. See below. |
+## Who is this for?
 
-Booleans, numeric strings, fractional numbers and out-of-range values are rejected for integer inputs, rather than silently converted or clamped.
+- SMEs looking for relevant public contracts
+- Consulting firms monitoring opportunities for their services
+- IT companies and cybersecurity companies building a tender shortlist
+- Business development teams prioritizing opportunities to review
+- Procurement consultants researching opportunities for clients
+- Developers, AI agents and automation workflows that need structured, ranked TED data
 
-### Company profile
+## How it works
 
-`country` is a three-letter preferred buyer country. `services` contains up to 50 non-empty phrases of up to 200 characters. `cpv_codes` contains up to 50 eight-digit strings (an optional `-checkdigit` suffix is stripped, not verified). `employees` is a non-negative integer used only for an informational warning. `min_contract_value` and `max_contract_value` are finite non-negative numbers, with minimum <= maximum when both are present. `preferred_currencies` contains up to 50 three-letter codes. Country/currency vocabulary membership is not checked. Unknown profile keys fail validation to catch typos.
+```text
+TED public procurement data
+↓
+TenderFit search
+↓
+company-profile matching
+↓
+deterministic scoring
+↓
+ranked dataset
+```
 
-Lists are deduplicated and empty lists are accepted. Omitted/null fields are not inferred. Services and CPV codes affect scoring only; they do not expand the TED keyword search or bypass its country filter. Use `country: ""` at top level to search all buyer countries while scoring against the profile country.
+## How to use
+
+1. Click "Try for free".
+2. Enter keywords and filters.
+3. Optionally add your company profile.
+4. Run the Actor.
+5. Review ranked results.
+
+Use this input as a starting point and replace the services and preferences with your own.
 
 Exact example in `examples/company-profile.json`:
 
@@ -72,6 +121,40 @@ Exact example in `examples/company-profile.json`:
 }
 ```
 
+## Pricing
+
+TenderFit EU uses pay-per-result pricing.
+
+- $0.01 per result returned
+- $0.00005 Actor start fee
+- Apify platform usage is included
+
+Examples:
+
+- 20 results ≈ $0.20
+- 100 results ≈ $1.00
+- 1,000 results ≈ $10.00
+
+These examples show result charges; the Actor start fee applies per run. Each run returns up to 100 results, so 1,000 results requires multiple runs.
+
+## Input
+
+| Field | Default | Validation and meaning |
+| --- | --- | --- |
+| keywords | cybersecurity, penetration testing | 1–20 non-empty strings, maximum 200 characters each; trimmed and deduplicated case-insensitively. Quotes, backslashes, wildcards and control characters are rejected. |
+| country | FRA | Three-letter TED country code; trimmed and uppercased. Empty string or null disables filtering. Format is checked, not membership in TED's country vocabulary. Use FRA, not FR. |
+| days | 30 | Integer 1–3650. Inclusive lower bound: UTC today minus this many days. |
+| max_results | 20 | Integer 1–100. Candidate cap: retrieve newest publication dates first, then sort these candidates by fit score. |
+| company_profile | {} | Optional object; all seven nested fields optional, including null values. See below. |
+
+Booleans, numeric strings, fractional numbers and out-of-range values are rejected for integer inputs, rather than silently converted or clamped.
+
+### Company profile
+
+`country` is a three-letter preferred buyer country. `services` contains up to 50 non-empty phrases of up to 200 characters. `cpv_codes` contains up to 50 eight-digit strings (an optional `-checkdigit` suffix is stripped, not verified). `employees` is a non-negative integer used only for an informational warning. `min_contract_value` and `max_contract_value` are finite non-negative numbers, with minimum <= maximum when both are present. `preferred_currencies` contains up to 50 three-letter codes. Country/currency vocabulary membership is not checked. Unknown profile keys fail validation to catch typos.
+
+Lists are deduplicated and empty lists are accepted. Omitted/null fields are not inferred. Services and CPV codes affect scoring only; they do not expand the TED keyword search or bypass its country filter. Use `country: ""` at top level to search all buyer countries while scoring against the profile country.
+
 ## Output
 
 Each item retains the eleven original fields and adds source context and scoring fields. Missing or empty source values become `null`; zero and explicit false are retained. TED's multilingual objects, arrays, decimal strings and date strings are preserved. No translation, monetary aggregation or currency conversion is performed. Computed match/reason/warning arrays use `[]` when empty; an uncalculable `days_until_deadline` is null.
@@ -91,6 +174,10 @@ For a compact **projection of a real API result** observed on 2026-09-11 (other 
 }
 ```
 
+## Important
+
+TenderFit measures documented relevance, not legal eligibility, bidding feasibility, or probability of winning. Always review the official TED notice and procurement documents before making a bid decision.
+
 ## Data table
 
 | Dataset field | Source and representation |
@@ -109,7 +196,7 @@ For a compact **projection of a real API result** observed on 2026-09-11 (other 
 
 For multiple keywords, one small additional API search per keyword confirms matches across the entire notice, including languages and fields not returned in the dataset. A single-keyword query already proves that match. Multi-lot amounts are never summed and currency is never borrowed from another scope. Arrays are not treated as guaranteed lot-to-currency or buyer-to-country joins.
 
-### V2 source fields
+## V2 source fields
 
 These **26 additional field names were accepted together by the live API**, for 41 requested fields total (4,100 field slots at the 100-notice cap). A field being supported does not guarantee it appears in a given notice.
 
@@ -147,22 +234,6 @@ Deadline calculations use the earliest published **calendar date** minus UTC tod
 Levels: **strong >= 70**, **medium 40–69**, **weak 0–39**. This is relevance, not an availability verdict: an expired notice can still score highly on other components, with an explicit warning. SME indicators, employee count, procedure type and eligibility data contribute no points and never establish legal eligibility.
 
 Without a profile, the maximum is 35 (20 keyword + 10 search-country + 5 deadline), or 25 with no country filter. This deliberately makes scores for incomplete profiles conservative. Results are stably sorted by decreasing score; ties preserve TED's returned publication-date order. Only the retrieved candidate set is ranked, not every matching notice on TED.
-
-## Pricing
-
-TenderFit EU uses pay-per-result pricing.
-
-- $0.01 per tender result returned
-- $0.00005 Actor start fee
-- Apify platform usage is included
-
-Examples:
-
-- 20 tender results ≈ $0.20
-- 100 tender results ≈ $1.00
-- 1,000 tender results ≈ $10.00
-
-You only pay for results actually written to the dataset.
 
 ## TED API verification and development
 
@@ -210,6 +281,8 @@ python -m my_actor
 ```
 
 The live test is opt-in and calls TED over HTTP; it writes its report under ignored local `storage/`. Set local input in `storage/key_value_stores/default/INPUT.json`. If a local corporate TLS setup needs extra trusted certificates, configure HTTPX's `SSL_CERT_FILE` with the approved CA bundle; never disable TLS verification.
+
+The Actor uses Python, Apify SDK and HTTPX only. It requires no TED credentials, browser, LLM, database or proxy configuration. Apify provides scheduling, API access, monitoring and integrations for the results.
 
 ## Limitations and support
 
