@@ -8,11 +8,22 @@ The Actor uses Python, Apify SDK and HTTPX only. It requires no TED credentials,
 
 Use it to prioritize manual opportunity review. V2 distinguishes service phrases in market titles/descriptions from TED full-text keyword matches. For example, “cybersecurity” can match an organisation's name in a furniture tender without earning service points. The score measures documented relevance, not qualification, bidding feasibility or probability of winning.
 
+## Who is this for?
+
+TenderFit EU is useful for:
+
+- SMEs looking for relevant EU public contracts
+- consulting and IT companies monitoring procurement opportunities
+- business development teams
+- procurement consultants
+- developers and AI agents that need structured TED tender data
+
+Instead of manually reviewing large numbers of TED notices, TenderFit EU retrieves recent candidates, ranks them against your company profile, and explains why each opportunity may or may not be relevant.
+
 ## How to use TenderFit EU
 
-1. Build the Actor from this repository's `main` branch.
-2. Enter the JSON below in the Apify Input tab.
-3. Run the Actor and inspect the Output dataset and run logs.
+1. Enter the JSON below in the Apify Input tab.
+2. Run the Actor and inspect the Output dataset and run logs.
 
 ```json
 {
@@ -137,9 +148,21 @@ Levels: **strong >= 70**, **medium 40–69**, **weak 0–39**. This is relevance
 
 Without a profile, the maximum is 35 (20 keyword + 10 search-country + 5 deadline), or 25 with no country filter. This deliberately makes scores for incomplete profiles conservative. Results are stably sorted by decreasing score; ties preserve TED's returned publication-date order. Only the retrieved candidate set is ranked, not every matching notice on TED.
 
-## Pricing / cost estimation
+## Pricing
 
-Apify usage depends on your account and run resources. The Actor makes one main request, then up to 20 verification requests, with bounded retries for transport errors, HTTP 429 and server errors. Smaller inputs reduce network traffic and run time. No external AI service is used.
+TenderFit EU uses pay-per-result pricing.
+
+- $0.01 per tender result returned
+- $0.00005 Actor start fee
+- Apify platform usage is included
+
+Examples:
+
+- 20 tender results ≈ $0.20
+- 100 tender results ≈ $1.00
+- 1,000 tender results ≈ $10.00
+
+You only pay for results actually written to the dataset.
 
 ## TED API verification and development
 
