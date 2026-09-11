@@ -8,13 +8,28 @@ from typing import Any
 import httpx
 from apify import Actor
 
+from .scoring import score_and_sort, validate_company_profile
+
 TED_API_URL = "https://api.ted.europa.eu/v3/notices/search"
 VALUE_SCOPES = ("proc", "lot", "glo", "part")
+ELIGIBILITY_FIELDS = [
+    "selection-criteria-source", "selection-criterion-lot",
+    "selection-criterion-description-lot", "selection-criterion-name-lot",
+    "selection-criterion-used-lot", "exclusion-grounds",
+    "exclusion-grounds-description", "exclusion-grounds-source-proc",
+    "reserved-procurement-lot",
+]
+EXTRA_TED_FIELDS = [
+    *[prefix + scope for prefix in ("title-", "description-") for scope in VALUE_SCOPES],
+    "procedure-type", "procedure-identifier", "identifier-lot", "identifier-glo",
+    "identifier-part", *ELIGIBILITY_FIELDS, "sme-lot", "sme-glo", "sme-part", "notice-type",
+]
 TED_FIELDS = [
     "publication-number", "notice-title", "buyer-name", "buyer-country",
     "publication-date", "deadline-receipt-tender-date-lot", "classification-cpv",
     *[prefix + scope for scope in VALUE_SCOPES
       for prefix in ("estimated-value-", "estimated-value-cur-")],
+    *EXTRA_TED_FIELDS,
 ]
 
 
@@ -47,6 +62,7 @@ def validate_input(value: Any) -> tuple[list[str], str | None, int, int]:
         if type(number) is not int or not 1 <= number <= maximum:
             raise ValueError(f"{name} must be an integer between 1 and {maximum}.")
         numbers.append(number)
+    validate_company_profile(value.get("company_profile"))
     return cleaned, country, numbers[0], numbers[1]
 
 
@@ -127,10 +143,11 @@ async def match_keywords(client: httpx.AsyncClient, notices: list[dict[str, Any]
 def parse_notice(notice: dict[str, Any], matched: dict[str, list[str]]) -> dict[str, Any]:
     notice_id = nullable(notice.get("publication-number"))
     # Never sum lots or pair currencies across scopes.
-    estimated_value = currency = None
+    estimated_value = currency = estimate_scope = None
     for scope in VALUE_SCOPES:
         estimated_value = nullable(notice.get(f"estimated-value-{scope}"))
         if estimated_value is not None:
+            estimate_scope = scope
             currency = nullable(notice.get(f"estimated-value-cur-{scope}"))
             break
     if estimated_value is None:
@@ -153,6 +170,21 @@ def parse_notice(notice: dict[str, Any], matched: dict[str, list[str]]) -> dict[
         "cpv": nullable(notice.get("classification-cpv")),
         "ted_url": url,
         "matched_keywords": nullable(matched.get(notice_id)) if isinstance(notice_id, str) else None,
+        "estimated_value_scope": estimate_scope,
+        "scope_titles": nullable({scope: notice[f"title-{scope}"] for scope in VALUE_SCOPES
+                                  if nullable(notice.get(f"title-{scope}")) is not None}),
+        "description": nullable({scope: notice[f"description-{scope}"] for scope in VALUE_SCOPES
+                                 if nullable(notice.get(f"description-{scope}")) is not None}),
+        "procedure_type": nullable(notice.get("procedure-type")),
+        "procedure_id": nullable(notice.get("procedure-identifier")),
+        "lot_ids": nullable(notice.get("identifier-lot")),
+        "group_ids": nullable(notice.get("identifier-glo")),
+        "part_ids": nullable(notice.get("identifier-part")),
+        "eligibility": nullable({field: notice[field] for field in ELIGIBILITY_FIELDS
+                                 if nullable(notice.get(field)) is not None}),
+        "sme_suitability": nullable({scope: notice[f"sme-{scope}"] for scope in ("lot", "glo", "part")
+                                     if nullable(notice.get(f"sme-{scope}")) is not None}),
+        "notice_type": nullable(notice.get("notice-type")),
     }
 
 
@@ -160,6 +192,7 @@ async def main() -> None:
     async with Actor:
         actor_input = await Actor.get_input()
         keywords, country, days, max_results = validate_input({} if actor_input is None else actor_input)
+        profile = validate_company_profile((actor_input or {}).get("company_profile"))
         query = build_query(keywords, country, days) + " SORT BY publication-date DESC"
         async with httpx.AsyncClient(timeout=httpx.Timeout(45.0), headers={"Accept": "application/json"}) as client:
             notices, total = await search(client, query, TED_FIELDS, max_results)
@@ -167,7 +200,8 @@ async def main() -> None:
             if total > len(notices):
                 Actor.log.info(f"Output limited to {len(notices)} of {total} matching notices.")
             matched = await match_keywords(client, notices, keywords)
-        items = [parse_notice(n, matched) for n in notices]
+        items = score_and_sort([parse_notice(n, matched) for n in notices], keywords, profile, country)
+        Actor.log.info(f"Scored {len(items)} notices; dataset sorted by fit_score descending.")
         if items:
             await Actor.push_data(items)
         Actor.log.info(f"Dataset results written: {len(items)}")

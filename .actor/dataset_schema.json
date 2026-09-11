@@ -68,8 +68,169 @@
                 ]
             },
             "matched_keywords": {
+                "type": "array",
+                "items": {
+                    "type": "string"
+                }
+            },
+            "fit_score": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 100,
+                "description": "Fixed-weight relevance score, not eligibility or probability of winning."
+            },
+            "fit_level": {
+                "type": "string",
+                "enum": [
+                    "strong",
+                    "medium",
+                    "weak"
+                ]
+            },
+            "score_breakdown": {
+                "type": "object",
+                "properties": {
+                    "services": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 35
+                    },
+                    "keywords": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 20
+                    },
+                    "cpv": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 15
+                    },
+                    "country": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 10
+                    },
+                    "budget": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 10
+                    },
+                    "currency": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 5
+                    },
+                    "deadline": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 5
+                    }
+                }
+            },
+            "match_reasons": {
+                "type": "array",
+                "items": {
+                    "type": "string"
+                }
+            },
+            "warnings": {
+                "type": "array",
+                "items": {
+                    "type": "string"
+                }
+            },
+            "matched_services": {
+                "type": "array",
+                "items": {
+                    "type": "string"
+                }
+            },
+            "matched_cpv": {
+                "type": "array",
+                "items": {
+                    "type": "string"
+                }
+            },
+            "days_until_deadline": {
+                "type": [
+                    "integer",
+                    "null"
+                ],
+                "description": "Earliest published deadline calendar date minus UTC today; may be negative."
+            },
+            "estimated_value_scope": {
+                "type": [
+                    "string",
+                    "null"
+                ],
+                "enum": [
+                    "proc",
+                    "lot",
+                    "glo",
+                    "part",
+                    null
+                ]
+            },
+            "scope_titles": {
+                "type": [
+                    "object",
+                    "null"
+                ]
+            },
+            "description": {
+                "type": [
+                    "object",
+                    "null"
+                ],
+                "description": "Raw multilingual descriptions by proc/lot/glo/part scope."
+            },
+            "procedure_type": {
+                "type": [
+                    "string",
+                    "null"
+                ]
+            },
+            "procedure_id": {
+                "type": [
+                    "string",
+                    "null"
+                ]
+            },
+            "lot_ids": {
                 "type": [
                     "array",
+                    "null"
+                ]
+            },
+            "group_ids": {
+                "type": [
+                    "array",
+                    "null"
+                ]
+            },
+            "part_ids": {
+                "type": [
+                    "array",
+                    "null"
+                ]
+            },
+            "eligibility": {
+                "type": [
+                    "object",
+                    "null"
+                ],
+                "description": "Raw TED selection/exclusion/reservation fields. No eligibility verdict or inferred requirements."
+            },
+            "sme_suitability": {
+                "type": [
+                    "object",
+                    "null"
+                ],
+                "description": "Raw scoped TED indicators, including explicit false values. Not a company SME assessment."
+            },
+            "notice_type": {
+                "type": [
+                    "string",
                     "null"
                 ]
             }
@@ -85,25 +246,48 @@
             "currency",
             "cpv",
             "ted_url",
-            "matched_keywords"
+            "matched_keywords",
+            "fit_score",
+            "fit_level",
+            "score_breakdown",
+            "match_reasons",
+            "warnings",
+            "matched_services",
+            "matched_cpv",
+            "days_until_deadline",
+            "estimated_value_scope",
+            "scope_titles",
+            "description",
+            "procedure_type",
+            "procedure_id",
+            "lot_ids",
+            "group_ids",
+            "part_ids",
+            "eligibility",
+            "sme_suitability",
+            "notice_type"
         ]
     },
     "views": {
         "overview": {
-            "title": "TED notices",
+            "title": "Tender fit ranking",
             "transformation": {
                 "fields": [
+                    "fit_score",
+                    "fit_level",
                     "notice_id",
                     "title",
                     "buyer",
                     "country",
-                    "publication_date",
-                    "deadline",
                     "estimated_value",
                     "currency",
-                    "cpv",
-                    "ted_url",
-                    "matched_keywords"
+                    "days_until_deadline",
+                    "match_reasons",
+                    "warnings",
+                    "matched_services",
+                    "matched_keywords",
+                    "matched_cpv",
+                    "ted_url"
                 ]
             },
             "display": {
@@ -152,6 +336,244 @@
                     "matched_keywords": {
                         "label": "matched_keywords",
                         "format": "array"
+                    },
+                    "fit_score": {
+                        "label": "fit_score",
+                        "format": "number"
+                    },
+                    "fit_level": {
+                        "label": "fit_level",
+                        "format": "text"
+                    },
+                    "score_breakdown": {
+                        "label": "score_breakdown",
+                        "format": "object"
+                    },
+                    "match_reasons": {
+                        "label": "match_reasons",
+                        "format": "array"
+                    },
+                    "warnings": {
+                        "label": "warnings",
+                        "format": "array"
+                    },
+                    "matched_services": {
+                        "label": "matched_services",
+                        "format": "array"
+                    },
+                    "matched_cpv": {
+                        "label": "matched_cpv",
+                        "format": "array"
+                    },
+                    "days_until_deadline": {
+                        "label": "days_until_deadline",
+                        "format": "number"
+                    },
+                    "estimated_value_scope": {
+                        "label": "estimated_value_scope",
+                        "format": "text"
+                    },
+                    "scope_titles": {
+                        "label": "scope_titles",
+                        "format": "object"
+                    },
+                    "description": {
+                        "label": "description",
+                        "format": "object"
+                    },
+                    "procedure_type": {
+                        "label": "procedure_type",
+                        "format": "text"
+                    },
+                    "procedure_id": {
+                        "label": "procedure_id",
+                        "format": "text"
+                    },
+                    "lot_ids": {
+                        "label": "lot_ids",
+                        "format": "array"
+                    },
+                    "group_ids": {
+                        "label": "group_ids",
+                        "format": "array"
+                    },
+                    "part_ids": {
+                        "label": "part_ids",
+                        "format": "array"
+                    },
+                    "eligibility": {
+                        "label": "eligibility",
+                        "format": "object"
+                    },
+                    "sme_suitability": {
+                        "label": "sme_suitability",
+                        "format": "object"
+                    },
+                    "notice_type": {
+                        "label": "notice_type",
+                        "format": "text"
+                    }
+                }
+            }
+        },
+        "details": {
+            "title": "TED source details",
+            "transformation": {
+                "fields": [
+                    "notice_id",
+                    "title",
+                    "buyer",
+                    "country",
+                    "publication_date",
+                    "deadline",
+                    "estimated_value",
+                    "currency",
+                    "cpv",
+                    "ted_url",
+                    "matched_keywords",
+                    "fit_score",
+                    "fit_level",
+                    "score_breakdown",
+                    "match_reasons",
+                    "warnings",
+                    "matched_services",
+                    "matched_cpv",
+                    "days_until_deadline",
+                    "estimated_value_scope",
+                    "scope_titles",
+                    "description",
+                    "procedure_type",
+                    "procedure_id",
+                    "lot_ids",
+                    "group_ids",
+                    "part_ids",
+                    "eligibility",
+                    "sme_suitability",
+                    "notice_type"
+                ]
+            },
+            "display": {
+                "component": "table",
+                "properties": {
+                    "notice_id": {
+                        "label": "notice_id",
+                        "format": "text"
+                    },
+                    "title": {
+                        "label": "title",
+                        "format": "object"
+                    },
+                    "buyer": {
+                        "label": "buyer",
+                        "format": "object"
+                    },
+                    "country": {
+                        "label": "country",
+                        "format": "array"
+                    },
+                    "publication_date": {
+                        "label": "publication_date",
+                        "format": "text"
+                    },
+                    "deadline": {
+                        "label": "deadline",
+                        "format": "array"
+                    },
+                    "estimated_value": {
+                        "label": "estimated_value",
+                        "format": "text"
+                    },
+                    "currency": {
+                        "label": "currency",
+                        "format": "text"
+                    },
+                    "cpv": {
+                        "label": "cpv",
+                        "format": "array"
+                    },
+                    "ted_url": {
+                        "label": "ted_url",
+                        "format": "link"
+                    },
+                    "matched_keywords": {
+                        "label": "matched_keywords",
+                        "format": "array"
+                    },
+                    "fit_score": {
+                        "label": "fit_score",
+                        "format": "number"
+                    },
+                    "fit_level": {
+                        "label": "fit_level",
+                        "format": "text"
+                    },
+                    "score_breakdown": {
+                        "label": "score_breakdown",
+                        "format": "object"
+                    },
+                    "match_reasons": {
+                        "label": "match_reasons",
+                        "format": "array"
+                    },
+                    "warnings": {
+                        "label": "warnings",
+                        "format": "array"
+                    },
+                    "matched_services": {
+                        "label": "matched_services",
+                        "format": "array"
+                    },
+                    "matched_cpv": {
+                        "label": "matched_cpv",
+                        "format": "array"
+                    },
+                    "days_until_deadline": {
+                        "label": "days_until_deadline",
+                        "format": "number"
+                    },
+                    "estimated_value_scope": {
+                        "label": "estimated_value_scope",
+                        "format": "text"
+                    },
+                    "scope_titles": {
+                        "label": "scope_titles",
+                        "format": "object"
+                    },
+                    "description": {
+                        "label": "description",
+                        "format": "object"
+                    },
+                    "procedure_type": {
+                        "label": "procedure_type",
+                        "format": "text"
+                    },
+                    "procedure_id": {
+                        "label": "procedure_id",
+                        "format": "text"
+                    },
+                    "lot_ids": {
+                        "label": "lot_ids",
+                        "format": "array"
+                    },
+                    "group_ids": {
+                        "label": "group_ids",
+                        "format": "array"
+                    },
+                    "part_ids": {
+                        "label": "part_ids",
+                        "format": "array"
+                    },
+                    "eligibility": {
+                        "label": "eligibility",
+                        "format": "object"
+                    },
+                    "sme_suitability": {
+                        "label": "sme_suitability",
+                        "format": "object"
+                    },
+                    "notice_type": {
+                        "label": "notice_type",
+                        "format": "text"
                     }
                 }
             }

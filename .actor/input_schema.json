@@ -40,11 +40,84 @@
         "max_results": {
             "title": "Maximum results",
             "type": "integer",
-            "description": "Maximum notices written, newest publication dates first.",
+            "description": "Score at most this many newest TED matches, then write them in descending fit_score order.",
             "editor": "number",
             "minimum": 1,
             "maximum": 100,
             "default": 20
+        },
+        "company_profile": {
+            "title": "Company profile (optional)",
+            "type": "object",
+            "editor": "json",
+            "description": "All fields optional. Budget comparisons require exactly one preferred currency. Employees are informational only. Services and CPV codes affect scoring, not the TED candidate search.",
+            "default": {},
+            "nullable": true,
+            "properties": {
+                "country": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z]{3}$",
+                    "nullable": true,
+                    "title": "Country",
+                    "description": "Preferred buyer country (three-letter TED code)."
+                },
+                "services": {
+                    "type": "array",
+                    "maxItems": 50,
+                    "items": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                    },
+                    "nullable": true,
+                    "title": "Services",
+                    "description": "Service phrases matched locally against market titles and descriptions."
+                },
+                "cpv_codes": {
+                    "type": "array",
+                    "maxItems": 50,
+                    "items": {
+                        "type": "string",
+                        "pattern": "^[0-9]{8}(-[0-9])?$"
+                    },
+                    "nullable": true,
+                    "title": "Cpv Codes",
+                    "description": "Exact eight-digit CPV codes; optional checkdigit is ignored, not validated."
+                },
+                "employees": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "nullable": true,
+                    "title": "Employees",
+                    "description": "Non-negative employee count; informational, no eligibility inference."
+                },
+                "min_contract_value": {
+                    "type": "number",
+                    "minimum": 0,
+                    "nullable": true,
+                    "title": "Min Contract Value",
+                    "description": "Inclusive minimum estimate in the single preferred currency."
+                },
+                "max_contract_value": {
+                    "type": "number",
+                    "minimum": 0,
+                    "nullable": true,
+                    "title": "Max Contract Value",
+                    "description": "Inclusive maximum estimate in the single preferred currency."
+                },
+                "preferred_currencies": {
+                    "type": "array",
+                    "maxItems": 50,
+                    "items": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z]{3}$"
+                    },
+                    "nullable": true,
+                    "title": "Preferred Currencies",
+                    "description": "Preferred three-letter currencies; exactly one required to compare budgets."
+                }
+            },
+            "additionalProperties": false
         }
     },
     "required": []

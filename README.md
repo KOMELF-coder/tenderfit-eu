@@ -1,12 +1,12 @@
 ## What does TenderFit EU do?
 
-**TenderFit EU searches public procurement notices from [TED](https://ted.europa.eu/)** using its public Search API v3. It filters by keyword phrases, buyer country and publication date, then writes up to 100 notices to an Apify dataset. Apify provides scheduling, API access, monitoring and integrations for these results.
+**TenderFit EU finds and ranks public procurement notices for a company profile**, using the public [TED](https://ted.europa.eu/) Search API v3. It retrieves up to 100 recent keyword/country/date matches, computes an explainable deterministic fit score, and writes them to an Apify dataset in descending score order. Apify provides scheduling, API access, monitoring and integrations for these results.
 
 The Actor uses Python, Apify SDK and HTTPX only. It requires no TED credentials, browser, LLM, database or proxy configuration.
 
 ## Why use TenderFit EU?
 
-Use it for procurement monitoring and collecting source data for manual opportunity review. Results are full-text matches, not a qualification or relevance score. For example, “cybersecurity” can match an organisation's name in a furniture tender. Always inspect the source notice before deciding whether a tender is relevant.
+Use it to prioritize manual opportunity review. V2 distinguishes service phrases in market titles/descriptions from TED full-text keyword matches. For example, “cybersecurity” can match an organisation's name in a furniture tender without earning service points. The score measures documented relevance, not qualification, bidding feasibility or probability of winning.
 
 ## How to use TenderFit EU
 
@@ -30,13 +30,40 @@ Use it for procurement monitoring and collecting source data for manual opportun
 | keywords | cybersecurity, penetration testing | 1–20 non-empty strings, maximum 200 characters each; trimmed and deduplicated case-insensitively. Quotes, backslashes, wildcards and control characters are rejected. |
 | country | FRA | Three-letter TED country code; trimmed and uppercased. Empty string or null disables filtering. Format is checked, not membership in TED's country vocabulary. Use FRA, not FR. |
 | days | 30 | Integer 1–3650. Inclusive lower bound: UTC today minus this many days. |
-| max_results | 20 | Integer 1–100. Newest publication dates first; no particular order guaranteed for equal dates. |
+| max_results | 20 | Integer 1–100. Candidate cap: retrieve newest publication dates first, then sort these candidates by fit score. |
+| company_profile | {} | Optional object; all seven nested fields optional, including null values. See below. |
 
 Booleans, numeric strings, fractional numbers and out-of-range values are rejected for integer inputs, rather than silently converted or clamped.
 
+### Company profile
+
+`country` is a three-letter preferred buyer country. `services` contains up to 50 non-empty phrases of up to 200 characters. `cpv_codes` contains up to 50 eight-digit strings (an optional `-checkdigit` suffix is stripped, not verified). `employees` is a non-negative integer used only for an informational warning. `min_contract_value` and `max_contract_value` are finite non-negative numbers, with minimum <= maximum when both are present. `preferred_currencies` contains up to 50 three-letter codes. Country/currency vocabulary membership is not checked. Unknown profile keys fail validation to catch typos.
+
+Lists are deduplicated and empty lists are accepted. Omitted/null fields are not inferred. Services and CPV codes affect scoring only; they do not expand the TED keyword search or bypass its country filter. Use `country: ""` at top level to search all buyer countries while scoring against the profile country.
+
+Exact example in `examples/company-profile.json`:
+
+```json
+{
+  "keywords": ["penetration testing", "incident response", "digital forensics"],
+  "country": "FRA",
+  "days": 30,
+  "max_results": 20,
+  "company_profile": {
+    "country": "FRA",
+    "services": ["penetration testing", "incident response", "digital forensics"],
+    "cpv_codes": [],
+    "employees": 12,
+    "min_contract_value": 0,
+    "max_contract_value": 500000,
+    "preferred_currencies": ["EUR"]
+  }
+}
+```
+
 ## Output
 
-Each item contains all eleven fields below. Missing or empty source values become `null`; zero is retained. TED's multilingual objects, arrays, decimal strings and date strings are preserved. No translation, monetary aggregation or date/time conversion is performed.
+Each item retains the eleven original fields and adds source context and scoring fields. Missing or empty source values become `null`; zero and explicit false are retained. TED's multilingual objects, arrays, decimal strings and date strings are preserved. No translation, monetary aggregation or currency conversion is performed. Computed match/reason/warning arrays use `[]` when empty; an uncalculable `days_until_deadline` is null.
 
 You can download the dataset in various formats such as JSON, HTML, CSV, or Excel. JSON retains nested multilingual data most clearly.
 
@@ -67,9 +94,48 @@ For a compact **projection of a real API result** observed on 2026-09-11 (other 
 | currency | Same scope as the selected estimate. If every estimate is absent, first populated currency in the same scope order. |
 | cpv | `classification-cpv`: list, including any source duplicates |
 | ted_url | Actual `links.html` URL, preferring ENG, then FRA, then another available language |
-| matched_keywords | Keywords confirmed by TED full-text searches restricted to returned publication numbers; null when unconfirmed |
+| matched_keywords | Keywords confirmed by TED full-text searches restricted to returned publication numbers; [] when unconfirmed |
 
 For multiple keywords, one small additional API search per keyword confirms matches across the entire notice, including languages and fields not returned in the dataset. A single-keyword query already proves that match. Multi-lot amounts are never summed and currency is never borrowed from another scope. Arrays are not treated as guaranteed lot-to-currency or buyer-to-country joins.
+
+### V2 source fields
+
+These **26 additional field names were accepted together by the live API**, for 41 requested fields total (4,100 field slots at the 100-notice cap). A field being supported does not guarantee it appears in a given notice.
+
+| Dataset context | Additional TED fields |
+| --- | --- |
+| scope_titles, description | `title-proc`, `title-lot`, `title-glo`, `title-part`; `description-proc`, `description-lot`, `description-glo`, `description-part` |
+| procedure_type, procedure_id | `procedure-type`, `procedure-identifier` |
+| lot_ids, group_ids, part_ids | `identifier-lot`, `identifier-glo`, `identifier-part` |
+| eligibility (raw source keys) | `selection-criteria-source`, `selection-criterion-lot`, `selection-criterion-description-lot`, `selection-criterion-name-lot`, `selection-criterion-used-lot`, `exclusion-grounds`, `exclusion-grounds-description`, `exclusion-grounds-source-proc`, `reserved-procurement-lot` |
+| sme_suitability (by scope) | `sme-lot`, `sme-glo`, `sme-part` |
+| notice_type | `notice-type` |
+
+`estimated_value_scope` identifies the chosen existing estimate source (`proc`, `lot`, `glo`, `part`), not a guessed contract hierarchy. Descriptions/titles are dictionaries by scope containing the unmodified multilingual TED values. The API exposes procedure/lot identifiers and criteria, but this Actor does not assume that parallel arrays can be joined by position.
+
+## Exact deterministic scoring formula
+
+The score is the sum of seven integer components, bounded to 0–100. **Weights are fixed: missing profile or notice data earns zero; weights are never redistributed.** `score_breakdown` exposes every component. `match_reasons` gives evidence and `warnings` identifies uncertainty, missing information and urgency.
+
+| Component | Exact points |
+| --- | --- |
+| Services | `floor(35 × matched services / supplied services)`, or 0 with no services. |
+| Keywords | `floor(20 × TED-confirmed requested keywords / requested keywords)`, or 0 with none. |
+| CPV | 15 if at least one supplied eight-digit CPV exactly matches a returned CPV; otherwise 0. No prefix matching. |
+| Country | 10 if the profile country occurs in buyer countries; use top-level search country only if profile country is absent. Otherwise 0. |
+| Budget | 10 if at least one bound is supplied and one valid non-negative estimate is within the inclusive range, in the single preferred currency; otherwise 0. Missing minimum means 0; missing maximum means unbounded. |
+| Currency | 5 if all reported non-empty currency entries are valid codes and belong to preferred currencies; otherwise 0. |
+| Deadline | 5 if earliest tender date is at least 7 days away; 2 if 1–6 days away; 0 if today, past, missing or unparseable. |
+
+Services match whole normalized phrases in individual market title/description strings across returned languages and scopes. Matching ignores case, accents, markup and punctuation; it does not translate, infer synonyms, stem words or join separate fields into a phrase. Buyer names and eligibility text are excluded from service scoring. Service/profile lists are deduplicated before computing coverage.
+
+Budget comparisons require **exactly one preferred currency**, with every reported currency matching it. The estimate must be a scalar or a one-element array. Multiple amounts, unknown currencies or multiple preferred currencies receive no budget points. There is no exchange-rate lookup or summation of lot values. Currency points are independent from budget points.
+
+Deadline calculations use the earliest published **calendar date** minus UTC today, retaining the date written by TED without timezone conversion. Missing/invalid entries make the calculation unknown. Mixed past/future lot deadlines use the earliest, even if another lot is still open. Submission times are not checked. Dates in 1–6 days, today and the past generate warnings.
+
+Levels: **strong >= 70**, **medium 40–69**, **weak 0–39**. This is relevance, not an availability verdict: an expired notice can still score highly on other components, with an explicit warning. SME indicators, employee count, procedure type and eligibility data contribute no points and never establish legal eligibility.
+
+Without a profile, the maximum is 35 (20 keyword + 10 search-country + 5 deadline), or 25 with no country filter. This deliberately makes scores for incomplete profiles conservative. Results are stably sorted by decreasing score; ties preserve TED's returned publication-date order. Only the retrieved candidate set is ranked, not every matching notice on TED.
 
 ## Pricing / cost estimation
 
@@ -98,7 +164,7 @@ The original HTTP 400 was reproduced and every original field was tested individ
 | estimated-value-cur | 400 UNSUPPORTED_VALUE | estimated-value-cur-proc, with matching scoped fallbacks |
 | classification-cpv | 200 | unchanged |
 
-All 15 final fields were tested together. The original query syntax is valid:
+The 15 V1 fields were tested together; V2 adds the 26 fields listed above. The original query syntax remains valid:
 
 ```text
 (FT~"cybersecurity" OR FT~"penetration testing") AND buyer-country = FRA AND publication-date >= 20260812
@@ -108,7 +174,9 @@ All 15 final fields were tested together. The original query syntax is valid:
 
 Observed JSON envelope: `notices` (array), `totalNoticeCount` (integer), `iterationNextToken` (null in page mode), and `timedOut` (boolean). Unexpected envelopes and timed-out searches fail instead of being reported as empty success.
 
-Real tests on 2026-09-11: HTTP 200, total 3, publications `598420-2026`, `609844-2026`, `612350-2026`. Each matched cybersecurity; none matched penetration testing. A full local SDK run wrote 3 items and exited 0. A no-match query returned HTTP 200 and zero results. The unmodified response for the nine corrected fields is saved in `tests/fixtures/ted_response.json` for regression tests.
+Real V2 tests on 2026-09-11: HTTP 200, total 3 for the cybersecurity/penetration-testing query, publications `598420-2026`, `609844-2026`, `612350-2026`. Each matched cybersecurity; none matched penetration testing. Using the company profile above with those two search keywords produced sorted scores **30, 30, 25**. A full local SDK run wrote those 3 scored items and exited 0; the output passed the dataset schema. The exact three-keyword input example returned HTTP 200, **zero notices** on that date and exited 0. That is a valid empty search, not a scoring error; broaden the date range or keywords if needed.
+
+The no-match smoke query also returned HTTP 200 and zero results. The unmodified V1 response is saved in `tests/fixtures/ted_response.json`. A real V2 notice with populated descriptions, selection criteria and lot identifiers is saved in `tests/fixtures/ted_v2_notice.json`. Synthetic scoring fixtures in unit tests are explicitly test data, never production output.
 
 ```bash
 python -m pip install -r requirements.txt
@@ -122,6 +190,10 @@ The live test is opt-in and calls TED over HTTP; it writes its report under igno
 
 ## Limitations and support
 
-The country filter matches buyer country, not place of performance. Scope ALL can include award notices and expired opportunities. Missing tender deadlines remain null; request-to-participate dates are not substituted. TED may omit estimated amounts or other fields. Procedure estimates take precedence over lot, group and part estimates; use the source notice for a full lot breakdown. Publication versions can appear separately. This Actor deliberately limits output to 100 notices and does not paginate beyond that cap.
+The country filter matches buyer country, not place of performance. Scope ALL can include award notices and expired opportunities. Missing tender deadlines remain null; request-to-participate dates are not substituted. TED may omit estimated amounts or other fields. Procedure estimates take precedence over lot, group and part estimates; use the source notice for a full lot breakdown. Publication versions can appear separately. This Actor deliberately limits output to 100 recent candidates and does not paginate beyond that cap; relevant older candidates can be missed.
+
+Selection criteria can be located in procurement documents or the ESPD instead of the notice, according to the [eForms procedure/lot documentation](https://docs.ted.europa.eu/eforms/latest/schema/procedure-lot-part-information.html). When such information is not returned, the Actor does not reconstruct it. It does not download documents, parse complete XML, verify certifications, infer financial capacity, assess exclusion grounds, resolve criteria to individual lots, or determine legal eligibility. Raw SME suitability indicates the buyer's statement only. Employee count alone is never used to classify SME status. Missing flags remain null, and explicit false flags remain false.
+
+Literal service matching can miss translated, inflected or synonymous descriptions and cannot interpret negation or contractual intent. TED keyword matching can occur outside the title/description. A fixed 0–100 score has no calibrated success probability and should be reviewed alongside its reasons, warnings and source fields.
 
 Local SDK storage does not publish data to Apify Cloud. Rebuild from the pushed commit and run in Apify to verify the cloud environment; the development tests do not claim a cloud run. API results and supported fields can change over time. Report reproducible issues at [GitHub Issues](https://github.com/KOMELF-coder/tenderfit-eu/issues).

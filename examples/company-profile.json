@@ -1,0 +1,15 @@
+{
+  "keywords": ["penetration testing", "incident response", "digital forensics"],
+  "country": "FRA",
+  "days": 30,
+  "max_results": 20,
+  "company_profile": {
+    "country": "FRA",
+    "services": ["penetration testing", "incident response", "digital forensics"],
+    "cpv_codes": [],
+    "employees": 12,
+    "min_contract_value": 0,
+    "max_contract_value": 500000,
+    "preferred_currencies": ["EUR"]
+  }
+}
