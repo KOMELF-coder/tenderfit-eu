@@ -1,8 +1,51 @@
 {
     "$schema": "https://apify.com/schemas/v1/input.ide.json",
-    "title": "Actor input",
+    "title": "TenderFit EU input",
     "type": "object",
     "schemaVersion": 1,
-    "properties": {},
+    "properties": {
+        "keywords": {
+            "title": "Keywords",
+            "type": "array",
+            "description": "1–20 phrases, each 1–200 characters. OR search across TED full text. Quotes, backslashes, wildcards and control characters are rejected.",
+            "editor": "stringList",
+            "items": {
+                "type": "string"
+            },
+            "minItems": 1,
+            "maxItems": 20,
+            "default": [
+                "cybersecurity",
+                "penetration testing"
+            ]
+        },
+        "country": {
+            "title": "Buyer country",
+            "type": "string",
+            "description": "Three-letter TED country code (FRA, DEU, ESP…). Empty string or null removes the country filter. Format is validated; code membership is not checked.",
+            "editor": "textfield",
+            "nullable": true,
+            "pattern": "^([A-Za-z]{3})?$",
+            "default": "FRA"
+        },
+        "days": {
+            "title": "Days",
+            "type": "integer",
+            "description": "Publication date >= UTC today minus this many days (inclusive).",
+            "editor": "number",
+            "minimum": 1,
+            "maximum": 3650,
+            "default": 30
+        },
+        "max_results": {
+            "title": "Maximum results",
+            "type": "integer",
+            "description": "Maximum notices written, newest publication dates first.",
+            "editor": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 20
+        }
+    },
     "required": []
 }

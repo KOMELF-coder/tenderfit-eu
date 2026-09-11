@@ -1,6 +1,160 @@
 {
     "$schema": "https://apify.com/schemas/v1/dataset.ide.json",
     "actorSpecification": 1,
-    "fields": {},
-    "views": {}
+    "fields": {
+        "type": "object",
+        "properties": {
+            "notice_id": {
+                "type": [
+                    "string",
+                    "null"
+                ]
+            },
+            "title": {
+                "type": [
+                    "object",
+                    "null"
+                ]
+            },
+            "buyer": {
+                "type": [
+                    "object",
+                    "null"
+                ]
+            },
+            "country": {
+                "type": [
+                    "array",
+                    "null"
+                ]
+            },
+            "publication_date": {
+                "type": [
+                    "string",
+                    "null"
+                ]
+            },
+            "deadline": {
+                "type": [
+                    "array",
+                    "null"
+                ]
+            },
+            "estimated_value": {
+                "type": [
+                    "string",
+                    "array",
+                    "number",
+                    "null"
+                ]
+            },
+            "currency": {
+                "type": [
+                    "string",
+                    "array",
+                    "null"
+                ]
+            },
+            "cpv": {
+                "type": [
+                    "array",
+                    "null"
+                ]
+            },
+            "ted_url": {
+                "type": [
+                    "string",
+                    "null"
+                ]
+            },
+            "matched_keywords": {
+                "type": [
+                    "array",
+                    "null"
+                ]
+            }
+        },
+        "required": [
+            "notice_id",
+            "title",
+            "buyer",
+            "country",
+            "publication_date",
+            "deadline",
+            "estimated_value",
+            "currency",
+            "cpv",
+            "ted_url",
+            "matched_keywords"
+        ]
+    },
+    "views": {
+        "overview": {
+            "title": "TED notices",
+            "transformation": {
+                "fields": [
+                    "notice_id",
+                    "title",
+                    "buyer",
+                    "country",
+                    "publication_date",
+                    "deadline",
+                    "estimated_value",
+                    "currency",
+                    "cpv",
+                    "ted_url",
+                    "matched_keywords"
+                ]
+            },
+            "display": {
+                "component": "table",
+                "properties": {
+                    "notice_id": {
+                        "label": "notice_id",
+                        "format": "text"
+                    },
+                    "title": {
+                        "label": "title",
+                        "format": "object"
+                    },
+                    "buyer": {
+                        "label": "buyer",
+                        "format": "object"
+                    },
+                    "country": {
+                        "label": "country",
+                        "format": "array"
+                    },
+                    "publication_date": {
+                        "label": "publication_date",
+                        "format": "text"
+                    },
+                    "deadline": {
+                        "label": "deadline",
+                        "format": "array"
+                    },
+                    "estimated_value": {
+                        "label": "estimated_value",
+                        "format": "text"
+                    },
+                    "currency": {
+                        "label": "currency",
+                        "format": "text"
+                    },
+                    "cpv": {
+                        "label": "cpv",
+                        "format": "array"
+                    },
+                    "ted_url": {
+                        "label": "ted_url",
+                        "format": "link"
+                    },
+                    "matched_keywords": {
+                        "label": "matched_keywords",
+                        "format": "array"
+                    }
+                }
+            }
+        }
+    }
 }

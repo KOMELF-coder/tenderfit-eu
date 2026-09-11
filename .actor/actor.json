@@ -2,13 +2,13 @@
     "$schema": "https://apify.com/schemas/v1/actor.ide.json",
     "actorSpecification": 1,
     "name": "my-actor",
-    "title": "Empty Python project",
-    "description": "Empty project in Python.",
+    "title": "TenderFit EU",
+    "description": "Search TED procurement notices by keywords, buyer country and publication date.",
     "version": "0.0",
     "buildTag": "latest",
     "meta": {
         "templateId": "python-empty",
-        "generatedBy": "<FILL-IN-MODEL>"
+        "generatedBy": "Codex with GPT-6"
     },
     "inputSchema": "./input_schema.json",
     "outputSchema": "./output_schema.json",
